@@ -275,7 +275,9 @@
 <script>
     const STOP_ID = 1561;
     const API_URL =
-        `https://www.wienerlinien.at/ogd_realtime/monitor?stopId=${STOP_ID}`;
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(
+        `https://www.wienerlinien.at/ogd_realtime/monitor?stopId=${STOP_ID}`
+    )}`;
 
     const REFRESH_INTERVAL = 15000;
 
