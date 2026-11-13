@@ -1,0 +1,533 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Abfahrtsmonitor – Wiener Linien</title>
+
+<style>
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        margin: 0;
+        min-height: 100vh;
+        background: #101722;
+        color: #f4f6fa;
+        font-family: Inter, "Segoe UI", Arial, sans-serif;
+    }
+
+    header {
+        padding: 32px 5%;
+        background: #182332;
+        border-bottom: 1px solid #293748;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 20px;
+    }
+
+    .station {
+        font-size: 30px;
+        font-weight: 750;
+        letter-spacing: -1px;
+    }
+
+    .subtitle {
+        color: #9baabd;
+        margin-top: 6px;
+        font-size: 14px;
+    }
+
+    .live {
+        color: #4ade80;
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .live::before {
+        content: "";
+        display: inline-block;
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: #4ade80;
+        margin-right: 8px;
+        box-shadow: 0 0 10px #4ade80;
+    }
+
+    main {
+        max-width: 1200px;
+        margin: auto;
+        padding: 30px 5%;
+    }
+
+    .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 22px;
+        gap: 15px;
+    }
+
+    .topbar h2 {
+        font-size: 20px;
+        margin: 0;
+    }
+
+    #lastUpdate {
+        color: #8292a6;
+        font-size: 13px;
+    }
+
+    .departure {
+        display: grid;
+        grid-template-columns: 85px 1fr 150px;
+        align-items: center;
+        gap: 22px;
+        padding: 23px 25px;
+        background: #1b2736;
+        border: 1px solid #293748;
+        border-radius: 14px;
+        margin-bottom: 12px;
+        transition: .2s;
+    }
+
+    .departure:hover {
+        background: #223145;
+        transform: translateY(-2px);
+    }
+
+    .line {
+        width: 70px;
+        height: 55px;
+        border-radius: 10px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 23px;
+        font-weight: 800;
+        background: #e53935;
+        color: white;
+    }
+
+    .info {
+        min-width: 0;
+    }
+
+    .destination {
+        font-size: 19px;
+        font-weight: 700;
+        margin-bottom: 7px;
+        overflow-wrap: anywhere;
+    }
+
+    .details {
+        color: #91a1b5;
+        font-size: 13px;
+    }
+
+    .time {
+        text-align: right;
+    }
+
+    .countdown {
+        font-size: 25px;
+        font-weight: 800;
+        white-space: nowrap;
+    }
+
+    .countdown.soon {
+        color: #4ade80;
+    }
+
+    .countdown.later {
+        color: #f4f6fa;
+    }
+
+    .clock {
+        color: #91a1b5;
+        font-size: 12px;
+        margin-top: 6px;
+    }
+
+    .delay {
+        display: inline-block;
+        margin-top: 7px;
+        padding: 4px 8px;
+        border-radius: 5px;
+        font-size: 11px;
+        font-weight: 700;
+        background: #293748;
+        color: #c5d0de;
+    }
+
+    .delay.positive {
+        color: #fbbf24;
+        background: #44371e;
+    }
+
+    .delay.negative {
+        color: #4ade80;
+        background: #183b30;
+    }
+
+    .empty {
+        padding: 60px 20px;
+        text-align: center;
+        background: #1b2736;
+        border-radius: 14px;
+        color: #91a1b5;
+    }
+
+    .error {
+        color: #f87171;
+        text-align: center;
+        padding: 20px;
+    }
+
+    footer {
+        text-align: center;
+        color: #68788c;
+        padding: 30px;
+        font-size: 12px;
+    }
+
+    @media(max-width: 600px) {
+        header {
+            padding: 24px 5%;
+        }
+
+        .station {
+            font-size: 23px;
+        }
+
+        .departure {
+            grid-template-columns: 58px 1fr;
+            gap: 14px;
+            padding: 17px;
+        }
+
+        .line {
+            width: 55px;
+            height: 48px;
+            font-size: 19px;
+        }
+
+        .destination {
+            font-size: 16px;
+        }
+
+        .time {
+            grid-column: 2;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .countdown {
+            font-size: 21px;
+        }
+
+        .clock {
+            margin: 0;
+        }
+    }
+</style>
+</head>
+
+<body>
+
+<header>
+    <div>
+        <div class="station" id="stationName">
+            Abfahrten
+        </div>
+        <div class="subtitle">
+            Wiener Linien · Echtzeit-Abfahrtsmonitor
+        </div>
+    </div>
+
+    <div class="live">LIVE</div>
+</header>
+
+<main>
+
+    <div class="topbar">
+        <h2>Die nächsten Abfahrten</h2>
+        <div id="lastUpdate">Lade Daten ...</div>
+    </div>
+
+    <div id="departures">
+        <div class="empty">Abfahrtsdaten werden geladen ...</div>
+    </div>
+
+</main>
+
+<footer>
+    Datenquelle: Wiener Linien Open Data · Automatische Aktualisierung alle 15 Sekunden
+</footer>
+
+<script>
+    const STOP_ID = 1561;
+    const API_URL =
+        `https://www.wienerlinien.at/ogd_realtime/monitor?stopId=${STOP_ID}`;
+
+    const REFRESH_INTERVAL = 15000;
+
+    let departures = [];
+
+    // Zeit in Sekunden lesbar formatieren
+    function formatTime(seconds) {
+        if (seconds <= 0) return "Jetzt";
+
+        if (seconds < 60) {
+            return `in ${seconds} Sek.`;
+        }
+
+        const minutes = Math.floor(seconds / 60);
+
+        if (minutes < 60) {
+            return `in ${minutes} Min.`;
+        }
+
+        const hours = Math.floor(minutes / 60);
+        const remainingMinutes = minutes % 60;
+
+        return remainingMinutes
+            ? `in ${hours} Std. ${remainingMinutes} Min.`
+            : `in ${hours} Std.`;
+    }
+
+    // Uhrzeit formatieren
+    function formatClock(date) {
+        if (!date || isNaN(date.getTime())) return "--:--";
+
+        return date.toLocaleTimeString("de-AT", {
+            hour: "2-digit",
+            minute: "2-digit"
+        });
+    }
+
+    // Verspätung berechnen
+    function getDelay(planned, real) {
+        if (!planned || !real) return null;
+
+        return Math.round((real - planned) / 60000);
+    }
+
+    // API-Daten abrufen
+    async function loadDepartures() {
+        try {
+            const response = await fetch(API_URL);
+
+            if (!response.ok) {
+                throw new Error("API nicht erreichbar");
+            }
+
+            const json = await response.json();
+
+            const monitors = json.data.monitors;
+
+            if (!monitors || monitors.length === 0) {
+                departures = [];
+                renderDepartures();
+                return;
+            }
+
+            departures = [];
+
+            for (const monitor of monitors) {
+                const stopName =
+                    monitor.locationStop.properties.title;
+
+                for (const line of monitor.lines) {
+
+                    const connections =
+                        line.departures.departure;
+
+                    for (const connection of connections) {
+
+                        const planned = connection.departureTime.timePlanned;
+                        const real = connection.departureTime.timeReal;
+
+                        const plannedDate = planned
+                            ? new Date(planned)
+                            : null;
+
+                        const realDate = real
+                            ? new Date(real)
+                            : null;
+
+                        // Falls keine Echtzeit vorhanden ist,
+                        // verwenden wir die geplante Abfahrtszeit.
+                        const departureDate =
+                            realDate && !isNaN(realDate.getTime())
+                                ? realDate
+                                : plannedDate;
+
+                        if (!departureDate ||
+                            isNaN(departureDate.getTime())) {
+                            continue;
+                        }
+
+                        const remaining = Math.floor(
+                            (departureDate.getTime() - Date.now()) / 1000
+                        );
+
+                        // Bereits abgefahrene Verbindungen ignorieren
+                        if (remaining < -60) continue;
+
+                        departures.push({
+                            name: line.name,
+                            towards: line.towards,
+                            stopName,
+                            plannedDate,
+                            realDate,
+                            departureDate,
+                            remaining,
+                            delay: getDelay(
+                                plannedDate,
+                                realDate
+                            )
+                        });
+                    }
+                }
+            }
+
+            // Nach tatsächlicher Abfahrtszeit sortieren
+            departures.sort((a, b) =>
+                a.departureDate - b.departureDate
+            );
+
+            renderDepartures();
+
+            document.getElementById("lastUpdate").textContent =
+                "Aktualisiert: " +
+                new Date().toLocaleTimeString("de-AT");
+
+        } catch (error) {
+            console.error(error);
+
+            document.getElementById("departures").innerHTML =
+                `<div class="error">
+                    Fehler beim Laden der Abfahrtsdaten.
+                    <br>Bitte Verbindung überprüfen.
+                </div>`;
+        }
+    }
+
+    // Abfahrten anzeigen
+    function renderDepartures() {
+        const container =
+            document.getElementById("departures");
+
+        if (departures.length === 0) {
+            container.innerHTML =
+                `<div class="empty">
+                    Aktuell keine Abfahrten vorhanden.
+                </div>`;
+            return;
+        }
+
+        container.innerHTML = departures.map((departure, index) => {
+
+            const seconds = Math.floor(
+                (departure.departureDate.getTime() - Date.now()) / 1000
+            );
+
+            const delay = departure.delay;
+
+            let delayHtml = "";
+
+            if (delay !== null) {
+                if (delay > 0) {
+                    delayHtml = `
+                        <span class="delay positive">
+                            +${delay} Min. Verspätung
+                        </span>`;
+                } else if (delay < 0) {
+                    delayHtml = `
+                        <span class="delay negative">
+                            ${Math.abs(delay)} Min. früher
+                        </span>`;
+                } else {
+                    delayHtml = `
+                        <span class="delay">
+                            Pünktlich
+                        </span>`;
+                }
+            }
+
+            return `
+                <div class="departure">
+
+                    <div class="line">
+                        ${escapeHtml(departure.name)}
+                    </div>
+
+                    <div class="info">
+                        <div class="destination">
+                            ${escapeHtml(departure.towards)}
+                        </div>
+
+                        <div class="details">
+                            ${escapeHtml(departure.stopName)}
+                            · ${index + 1}. Abfahrt
+                        </div>
+
+                        ${delayHtml}
+                    </div>
+
+                    <div class="time">
+                        <div class="countdown ${
+                            seconds <= 120 ? "soon" : "later"
+                        }">
+                            ${formatTime(seconds)}
+                        </div>
+
+                        <div class="clock">
+                            ${formatClock(departure.departureDate)}
+                        </div>
+                    </div>
+
+                </div>
+            `;
+        }).join("");
+    }
+
+    // Daten sicher als Text darstellen
+    function escapeHtml(value) {
+        return String(value ?? "").replace(/[&<>"']/g, char => ({
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#039;"
+        })[char]);
+    }
+
+    // Countdown jede Sekunde aktualisieren,
+    // ohne ständig die API aufzurufen.
+    setInterval(() => {
+        departures.sort(
+            (a, b) => a.departureDate - b.departureDate
+        );
+
+        renderDepartures();
+    }, 1000);
+
+    // Initial laden
+    loadDepartures();
+
+    // API regelmäßig aktualisieren
+    setInterval(loadDepartures, REFRESH_INTERVAL);
+
+</script>
+
+</body>
+</html>
