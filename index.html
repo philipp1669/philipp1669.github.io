@@ -273,15 +273,22 @@
 </footer>
 
 <script>
-    const STOP_ID = 1561;
-    const API_URL =
-    `https://api.allorigins.win/raw?url=${encodeURIComponent(
-        `https://www.wienerlinien.at/ogd_realtime/monitor?stopId=${STOP_ID}`
-    )}`;
+const STOP_ID = 1561;
+const TARGET_URL =
+    `https://www.wienerlinien.at/ogd_realtime/monitor?stopId=${STOP_ID}`;
 
-    const REFRESH_INTERVAL = 15000;
+const REFRESH_INTERVAL = 15000;
 
-    let departures = [];
+// Öffentliche CORS-Proxys, werden der Reihe nach probiert
+const PROXIES = [
+    u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+    u => `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(u)}`,
+    u => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
+    u => `https://thingproxy.freeboard.io/fetch/${u}`
+];
+
+let proxyIndex = 0; // zuletzt funktionierender Proxy
+let departures = [];
 
     // Zeit in Sekunden lesbar formatieren
     function formatTime(seconds) {
@@ -322,16 +329,44 @@
         return Math.round((real - planned) / 60000);
     }
 
+async function fetchWithTimeout(url, ms = 6000) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), ms);
+    try {
+        return await fetch(url, { signal: controller.signal });
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+async function fetchJson() {
+    // Cache-Buster, da manche Proxys Antworten zwischenspeichern
+    const target = `${TARGET_URL}&_=${Date.now()}`;
+
+    for (let i = 0; i < PROXIES.length; i++) {
+        const idx = (proxyIndex + i) % PROXIES.length;
+
+        try {
+            const response = await fetchWithTimeout(PROXIES[idx](target));
+            if (!response.ok) throw new Error("HTTP " + response.status);
+
+            const json = await response.json();
+            if (!json || !json.data) throw new Error("Ungültige Antwort");
+
+            proxyIndex = idx; // diesen Proxy beim nächsten Mal zuerst nehmen
+            return json;
+        } catch (err) {
+            console.warn("Proxy fehlgeschlagen:", idx, err);
+        }
+    }
+
+    throw new Error("Alle Proxys fehlgeschlagen");
+}
+
     // API-Daten abrufen
     async function loadDepartures() {
         try {
-            const response = await fetch(API_URL);
-
-            if (!response.ok) {
-                throw new Error("API nicht erreichbar");
-            }
-
-            const json = await response.json();
+            const json = await fetchJson();
 
             const monitors = json.data.monitors;
 
